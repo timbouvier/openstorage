@@ -183,6 +183,11 @@ message Source {
   string seed = 2;
 }
 
+message Group {
+  // Id common identifier across volumes that have the same group.
+  string id = 1;
+}
+
 // VolumeSpec has the properties needed to create a volume.
 message VolumeSpec {
   // Ephemeral storage
@@ -220,6 +225,14 @@ message VolumeSpec {
   string snapshot_schedule = 15;
   // Scale allows autocreation of volumes.
   uint32 scale = 16;
+  // Sticky volumes cannot be deleted until the flag is removed.
+  bool sticky = 17;
+  // Group identifies a consistency group
+  Group group = 18;
+  // GroupEnforced is true if consistency group creation is enforced.
+  bool group_enforced = 19;
+  // Compressed is true if this volume is to be compressed.
+  bool compressed = 20;
 }
 
 // Set of machine IDs (nodes) to which part of this volume is erasure coded - for clustered storage arrays
