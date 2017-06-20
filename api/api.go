@@ -2,6 +2,7 @@ package api
 
 import (
 	"fmt"
+	"math"
 	"strconv"
 	"strings"
 	"time"
@@ -9,19 +10,28 @@ import (
 
 // Strings for VolumeSpec
 const (
-	Name                 = "name"
-	SpecEphemeral        = "ephemeral"
-	SpecShared           = "shared"
-	SpecSize             = "size"
-	SpecScale            = "scale"
-	SpecFilesystem       = "fs"
-	SpecBlockSize        = "block_size"
-	SpecHaLevel          = "repl"
-	SpecPriority         = "io_priority"
-	SpecSnapshotInterval = "snap_interval"
-	SpecAggregationLevel = "aggregation_level"
-	SpecDedupe           = "dedupe"
-	SpecPassphrase       = "passphrase"
+	Name                     = "name"
+	SpecNodes                = "nodes"
+	SpecEphemeral            = "ephemeral"
+	SpecShared               = "shared"
+	SpecSize                 = "size"
+	SpecScale                = "scale"
+	SpecFilesystem           = "fs"
+	SpecBlockSize            = "block_size"
+	SpecHaLevel              = "repl"
+	SpecPriority             = "io_priority"
+	SpecSnapshotInterval     = "snap_interval"
+	SpecAggregationLevel     = "aggregation_level"
+	SpecDedupe               = "dedupe"
+	SpecPassphrase           = "secret_key"
+	SpecAutoAggregationValue = "auto"
+	SpecSecure               = "secure"
+	SpecSticky               = "sticky"
+	SpecCompressed           = "compressed"
+	SpecGroup                = "group"
+	SpecGroupEnforce         = "fg"
+	SpecZones                = "zones"
+	SpecRacks                = "racks"
 )
 
 // OptionKey specifies a set of recognized query params.
@@ -40,9 +50,15 @@ const (
 
 // Api client-server Constants
 const (
-	OsdVolumePath = "osd-volumes"
+	OsdVolumePath   = "osd-volumes"
 	OsdSnapshotPath = "osd-snapshot"
 )
+
+const (
+	// AutoAggregation value indicates driver to select aggregation level.
+	AutoAggregation = math.MaxUint32
+)
+
 // Node describes the state of a node.
 // It includes the current physical state (CPU, memory, storage, network usage) as
 // well as the containers running on the system.

@@ -7,6 +7,7 @@ import (
 
 	"github.com/libopenstorage/openstorage/api"
 	"github.com/libopenstorage/openstorage/pkg/units"
+	"strings"
 )
 
 // SpecHandler provides conversion function from what gets passed in over the
@@ -54,16 +55,16 @@ func NewSpecHandler() SpecHandler {
 	return &specHandler{}
 }
 
-func (d *specHandler) cosLevel(cos string) (uint32, error) {
+func (d *specHandler) cosLevel(cos string) (api.CosType, error) {
 	switch cos {
 	case "high", "3":
-		return uint32(api.CosType_HIGH), nil
+		return api.CosType_HIGH, nil
 	case "medium", "2":
-		return uint32(api.CosType_MEDIUM), nil
+		return api.CosType_MEDIUM, nil
 	case "low", "1", "":
-		return uint32(api.CosType_LOW), nil
+		return api.CosType_LOW, nil
 	}
-	return uint32(api.CosType_LOW),
+	return api.CosType_LOW,
 		fmt.Errorf("Cos must be one of %q | %q | %q", "high", "medium", "low")
 }
 
@@ -94,10 +95,22 @@ func (d *specHandler) DefaultSpec() *api.VolumeSpec {
 func (d *specHandler) SpecFromOpts(
 	opts map[string]string,
 ) (*api.VolumeSpec, error) {
+	var locator *api.VolumeLocator
+
 	spec := d.DefaultSpec()
+
+	nodeList := make([]string, 0)
 
 	for k, v := range opts {
 		switch k {
+		case api.SpecNodes:
+			inputNodes := strings.Split(v, ",")
+			for _, node := range inputNodes {
+				if len(node) != 0 {
+					nodeList = append(nodeList, node)
+				}
+			}
+			spec.ReplicaSet = &api.ReplicaSet{Nodes: nodeList}
 		case api.SpecEphemeral:
 			spec.Ephemeral, _ = strconv.ParseBool(v)
 		case api.SpecSize:
@@ -122,7 +135,7 @@ func (d *specHandler) SpecFromOpts(
 			haLevel, _ := strconv.ParseInt(v, 10, 64)
 			spec.HaLevel = haLevel
 		case api.SpecPriority:
-			cos, _ := api.CosTypeSimpleValueOf(v)
+			cos, _ := d.cosLevel(v)
 			spec.Cos = cos
 		case api.SpecDedupe:
 			spec.Dedupe, _ = strconv.ParseBool(v)
@@ -130,8 +143,12 @@ func (d *specHandler) SpecFromOpts(
 			snapshotInterval, _ := strconv.ParseUint(v, 10, 32)
 			spec.SnapshotInterval = uint32(snapshotInterval)
 		case api.SpecAggregationLevel:
-			aggregationLevel, _ := strconv.ParseUint(v, 10, 32)
-			spec.AggregationLevel = uint32(aggregationLevel)
+			if v == api.SpecAutoAggregationValue {
+				spec.AggregationLevel = api.AutoAggregation
+			} else {
+				aggregationLevel, _ := strconv.ParseUint(v, 10, 32)
+				spec.AggregationLevel = uint32(aggregationLevel)
+			}
 		case api.SpecShared:
 			if shared, err := strconv.ParseBool(v); err != nil {
 				return nil, err
@@ -141,6 +158,39 @@ func (d *specHandler) SpecFromOpts(
 		case api.SpecPassphrase:
 			spec.Encrypted = true
 			spec.Passphrase = v
+		case api.SpecSecure:
+			if secure, err := strconv.ParseBool(v); err != nil {
+				return nil, err
+			} else {
+				spec.Encrypted = secure
+			}
+		case api.SpecSticky:
+			if sticky, err := strconv.ParseBool(v); err != nil {
+				return nil, err
+			} else {
+				spec.Sticky = sticky
+			}
+		case api.SpecGroup:
+			spec.Group = &api.Group{Id: v}
+		case api.SpecGroupEnforce:
+			if groupEnforced, err := strconv.ParseBool(v); err != nil {
+				return nil, err
+			} else {
+				spec.GroupEnforced = groupEnforced
+			}
+		case api.SpecZones, api.SpecRacks:
+			if locator == nil {
+				locator = &api.VolumeLocator{
+					VolumeLabels: make(map[string]string),
+				}
+			}
+			locator.VolumeLabels[k] = v
+		case api.SpecCompressed:
+			if compressed, err := strconv.ParseBool(v); err != nil {
+				return nil, err
+			} else {
+				spec.Compressed = compressed
+			}
 		default:
 			spec.VolumeLabels[k] = v
 		}

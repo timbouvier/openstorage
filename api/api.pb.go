@@ -616,6 +616,23 @@ func (m *Source) GetSeed() string {
 	return ""
 }
 
+type Group struct {
+	// Id common identifier across volumes that have the same group.
+	Id string `protobuf:"bytes,1,opt,name=id" json:"id,omitempty"`
+}
+
+func (m *Group) Reset()                    { *m = Group{} }
+func (m *Group) String() string            { return proto.CompactTextString(m) }
+func (*Group) ProtoMessage()               {}
+func (*Group) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{4} }
+
+func (m *Group) GetId() string {
+	if m != nil {
+		return m.Id
+	}
+	return ""
+}
+
 // VolumeSpec has the properties needed to create a volume.
 type VolumeSpec struct {
 	// Ephemeral storage
@@ -653,6 +670,14 @@ type VolumeSpec struct {
 	SnapshotSchedule string `protobuf:"bytes,15,opt,name=snapshot_schedule,json=snapshotSchedule" json:"snapshot_schedule,omitempty"`
 	// Scale allows autocreation of volumes.
 	Scale uint32 `protobuf:"varint,16,opt,name=scale" json:"scale,omitempty"`
+	// Sticky volumes cannot be deleted until the flag is removed.
+	Sticky bool `protobuf:"varint,18,opt,name=sticky" json:"sticky,omitempty"`
+	// Group identifies a consistency group
+	Group *Group `protobuf:"bytes,21,opt,name=group" json:"group,omitempty"`
+	// GroupEnforced is true if consistency group creation is enforced.
+	GroupEnforced bool `protobuf:"varint,22,opt,name=group_enforced,json=groupEnforced" json:"group_enforced,omitempty"`
+	// Compressed is true if this volume is to be compressed.
+	Compressed bool `protobuf:"varint,23,opt,name=compressed" json:"compressed,omitempty"`
 }
 
 func (m *VolumeSpec) Reset()                    { *m = VolumeSpec{} }
