@@ -126,9 +126,11 @@ func (d *specHandler) SpecFromOpts(
 				spec.Format = value
 			}
 		case api.SpecBlockSize:
+			fmt.Printf("[px-debug] got block size: %v\n", v)
 			if blockSize, err := units.Parse(v); err != nil {
 				return nil, err
 			} else {
+				fmt.Printf("[px-debug] parsed block size: %v\n", blockSize)
 				spec.BlockSize = blockSize
 			}
 		case api.SpecHaLevel:
