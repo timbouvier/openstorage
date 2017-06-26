@@ -125,7 +125,9 @@ func (d *specHandler) SpecFromOpts(
 	opts map[string]string,
 ) (*api.VolumeSpec, *api.VolumeLocator, *api.Source, error) {
 	var source *api.Source
-	var locator *api.VolumeLocator
+	locator := &api.VolumeLocator{
+		VolumeLabels: make(map[string]string),
+	}
 
 	spec := d.DefaultSpec()
 
@@ -215,26 +217,15 @@ func (d *specHandler) SpecFromOpts(
 				spec.GroupEnforced = groupEnforced
 			}
 		case api.SpecZones, api.SpecRacks:
-			if locator == nil {
-				locator = &api.VolumeLocator{
-					VolumeLabels: make(map[string]string),
-				}
-			}
 			locator.VolumeLabels[k] = v
 		case api.SpecLabels:
 			labels := parseCsvLabels(v)
-			if locator == nil {
-				locator = &api.VolumeLocator{
-					VolumeLabels: make(map[string]string),
-				}
-			}
-
-			for k,v := range labels {
+			for k, v := range labels {
 				locator.VolumeLabels[k] = v
 			}
 		case api.SpecCompressed:
 			if compressed, err := strconv.ParseBool(v); err != nil {
-				return nil, nil, nil,err
+				return nil, nil, nil, err
 			} else {
 				spec.Compressed = compressed
 			}
