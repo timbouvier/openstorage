@@ -17,20 +17,33 @@ type SpecHandler interface {
 	// If the scheduler was unable to pass in the volume spec via the API,
 	// the spec can be passed in via the name in the format:
 	// "key=value;key=value;name=volname"
+	// source is populated if key parent=<volume_id> is specified.
 	// If the spec was parsed, it returns:
-	//  	(true, parsed_spec, parsed_name)
+	//  	(true, parsed_spec, locator, source, parsed_name)
 	// If the input string didn't contain the string, it returns:
-	// 	(false, DefaultSpec(), inputString)
-	SpecFromString(inputString string) (bool, *api.VolumeSpec, string)
+	// 	(false, DefaultSpec(), nil, nil, inputString)
+	SpecFromString(inputString string) (
+		bool,
+		*api.VolumeSpec,
+		*api.VolumeLocator,
+		*api.Source,
+		string,
+	)
 
 	// SpecFromOpts parses in docker options passed in the the docker run
 	// command of the form --opt name=value
+	// source is populated if --opt parent=<volume_id> is specified.
 	// If the options are validated then it returns:
-	// 	(resultant_VolumeSpec, nil)
+	// 	(resultant_VolumeSpec, source, locator, nil)
 	// If the options have invalid values then it returns:
-	//	(nil, error)
+	//	(nil, nil, nil, error)
 
-	SpecFromOpts(opts map[string]string) (*api.VolumeSpec, error)
+	SpecFromOpts(opts map[string]string) (
+		*api.VolumeSpec,
+		*api.VolumeLocator,
+		*api.Source,
+		error,
+	)
 	// Returns a default VolumeSpec if no docker options or string encoding
 	// was provided.
 	DefaultSpec() *api.VolumeSpec
@@ -92,9 +105,26 @@ func (d *specHandler) DefaultSpec() *api.VolumeSpec {
 	}
 }
 
+func parseCsvLabels(csv string) map[string]string {
+	labels := make(map[string]string)
+	if len(csv) == 0 {
+		return labels
+	}
+
+	for _, entry := range strings.Split(csv, ",") {
+		label := strings.Split(entry, "=")
+		if len(label) == 2 {
+			labels[label[0]] = label[1]
+		}
+	}
+
+	return labels
+}
+
 func (d *specHandler) SpecFromOpts(
 	opts map[string]string,
-) (*api.VolumeSpec, error) {
+) (*api.VolumeSpec, *api.VolumeLocator, *api.Source, error) {
+	var source *api.Source
 	var locator *api.VolumeLocator
 
 	spec := d.DefaultSpec()
@@ -111,26 +141,30 @@ func (d *specHandler) SpecFromOpts(
 				}
 			}
 			spec.ReplicaSet = &api.ReplicaSet{Nodes: nodeList}
+		case api.SpecParent:
+			source = &api.Source{Parent: v}
 		case api.SpecEphemeral:
 			spec.Ephemeral, _ = strconv.ParseBool(v)
 		case api.SpecSize:
 			if size, err := units.Parse(v); err != nil {
-				return nil, err
+				return nil, nil, nil, err
 			} else {
 				spec.Size = uint64(size)
 			}
+		case api.SpecScale:
+			if scale, err := strconv.ParseUint(v, 10, 64); err == nil {
+				spec.Scale = uint32(scale)
+			}
 		case api.SpecFilesystem:
 			if value, err := api.FSTypeSimpleValueOf(v); err != nil {
-				return nil, err
+				return nil, nil, nil, err
 			} else {
 				spec.Format = value
 			}
 		case api.SpecBlockSize:
-			fmt.Printf("[px-debug] got block size: %v\n", v)
 			if blockSize, err := units.Parse(v); err != nil {
-				return nil, err
+				return nil, nil, nil, err
 			} else {
-				fmt.Printf("[px-debug] parsed block size: %v\n", blockSize)
 				spec.BlockSize = blockSize
 			}
 		case api.SpecHaLevel:
@@ -153,7 +187,7 @@ func (d *specHandler) SpecFromOpts(
 			}
 		case api.SpecShared:
 			if shared, err := strconv.ParseBool(v); err != nil {
-				return nil, err
+				return nil, nil, nil, err
 			} else {
 				spec.Shared = shared
 			}
@@ -162,13 +196,13 @@ func (d *specHandler) SpecFromOpts(
 			spec.Passphrase = v
 		case api.SpecSecure:
 			if secure, err := strconv.ParseBool(v); err != nil {
-				return nil, err
+				return nil, nil, nil, err
 			} else {
 				spec.Encrypted = secure
 			}
 		case api.SpecSticky:
 			if sticky, err := strconv.ParseBool(v); err != nil {
-				return nil, err
+				return nil, nil, nil, err
 			} else {
 				spec.Sticky = sticky
 			}
@@ -176,7 +210,7 @@ func (d *specHandler) SpecFromOpts(
 			spec.Group = &api.Group{Id: v}
 		case api.SpecGroupEnforce:
 			if groupEnforced, err := strconv.ParseBool(v); err != nil {
-				return nil, err
+				return nil, nil, nil, err
 			} else {
 				spec.GroupEnforced = groupEnforced
 			}
@@ -187,9 +221,20 @@ func (d *specHandler) SpecFromOpts(
 				}
 			}
 			locator.VolumeLabels[k] = v
+		case api.SpecLabels:
+			labels := parseCsvLabels(v)
+			if locator == nil {
+				locator = &api.VolumeLocator{
+					VolumeLabels: make(map[string]string),
+				}
+			}
+
+			for k,v := range labels {
+				locator.VolumeLabels[k] = v
+			}
 		case api.SpecCompressed:
 			if compressed, err := strconv.ParseBool(v); err != nil {
-				return nil, err
+				return nil, nil, nil,err
 			} else {
 				spec.Compressed = compressed
 			}
@@ -197,16 +242,16 @@ func (d *specHandler) SpecFromOpts(
 			spec.VolumeLabels[k] = v
 		}
 	}
-	return spec, nil
+	return spec, locator, source, nil
 }
 
 func (d *specHandler) SpecFromString(
 	str string,
-) (bool, *api.VolumeSpec, string) {
+) (bool, *api.VolumeSpec, *api.VolumeLocator, *api.Source, string) {
 	// If we can't parse the name, the rest of the spec is invalid.
 	ok, name := d.getVal(nameRegex, str)
 	if !ok {
-		return false, d.DefaultSpec(), str
+		return false, d.DefaultSpec(), nil, nil, str
 	}
 
 	opts := make(map[string]string)
@@ -236,9 +281,9 @@ func (d *specHandler) SpecFromString(
 		opts[api.SpecPassphrase] = passphrase
 	}
 
-	spec, err := d.SpecFromOpts(opts)
+	spec, locator, source, err := d.SpecFromOpts(opts)
 	if err != nil {
-		return false, d.DefaultSpec(), name
+		return false, d.DefaultSpec(), nil, nil, name
 	}
-	return true, spec, name
+	return true, spec, locator, source, name
 }

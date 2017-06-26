@@ -183,7 +183,7 @@ func (d *driver) Alerts(volumeID string) (*api.Alerts, error) {
 	return nil, volume.ErrNotSupported
 }
 
-func (d *driver) Attach(volumeID string) (path string, err error) {
+func (d *driver) Attach(volumeID string, attachOptions map[string]string) (path string, err error) {
 	return "", nil
 }
 

@@ -31,6 +31,21 @@ const (
 	VolumeBase    = "/var/lib/osd/"
 )
 
+const (
+	// LocationConstaint is a label that specifies data location constraint.
+	LocationConstraint = "LocationConstraint"
+	// LocalNode is an alias for this node - similar to localhost.
+	LocalNode = "LocalNode"
+)
+
+// AttachOptionsKey specifies a key type from a key-value pair
+// that will be passed in to the Attach api
+type AttachOptionsKey string
+
+const (
+	AttachOptionsSecret = AttachOptionsKey("SECRET_KEY")
+)
+
 type Store interface {
 	// Lock volume specified by volumeID.
 	Lock(volumeID string) (interface{}, error)
@@ -139,7 +154,7 @@ type BlockDriver interface {
 	// Attach map device to the host.
 	// On success the devicePath specifies location where the device is exported
 	// Errors ErrEnoEnt, ErrVolAttached may be returned.
-	Attach(volumeID string) (string, error)
+	Attach(volumeID string, attachOptions map[string]string) (string, error)
 	// Detach device from the host.
 	// Errors ErrEnoEnt, ErrVolDetached may be returned.
 	Detach(volumeID string) error

@@ -16,7 +16,7 @@ var (
 
 type blockNotSupported struct{}
 
-func (b *blockNotSupported) Attach(volumeID string) (string, error) {
+func (b *blockNotSupported) Attach(volumeID string, attachOptions map[string]string) (string, error) {
 	return "", ErrNotSupported
 }
 

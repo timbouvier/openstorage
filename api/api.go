@@ -12,6 +12,7 @@ import (
 const (
 	Name                     = "name"
 	SpecNodes                = "nodes"
+	SpecParent               = "parent"
 	SpecEphemeral            = "ephemeral"
 	SpecShared               = "shared"
 	SpecSize                 = "size"
@@ -32,6 +33,7 @@ const (
 	SpecGroupEnforce         = "fg"
 	SpecZones                = "zones"
 	SpecRacks                = "racks"
+	SpecLabels               = "labels"
 )
 
 // OptionKey specifies a set of recognized query params.
@@ -221,4 +223,25 @@ func (v *Stats) Iops() uint64 {
 		return 0
 	}
 	return (v.Writes + v.Reads) / toSec(v.IntervalMs)
+}
+
+// Scaled returns true if the volume is scaled.
+func (v *Volume) Scaled() bool {
+	return v.Spec.Scale > 1
+}
+
+// Copy makes a deep copy of VolumeSpec
+func (s *VolumeSpec) Copy() *VolumeSpec {
+	spec := *s
+	if s.VolumeLabels != nil {
+		spec.VolumeLabels = make(map[string]string)
+		for k, v := range s.VolumeLabels {
+			spec.VolumeLabels[k] = v
+		}
+	}
+	if s.ReplicaSet != nil {
+		spec.ReplicaSet = &ReplicaSet{Nodes: make([]string, len(s.ReplicaSet.Nodes))}
+		copy(spec.ReplicaSet.Nodes, s.ReplicaSet.Nodes)
+	}
+	return &spec
 }
