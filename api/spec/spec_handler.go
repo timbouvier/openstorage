@@ -124,7 +124,7 @@ func parseCsvLabels(csv string) map[string]string {
 func (d *specHandler) SpecFromOpts(
 	opts map[string]string,
 ) (*api.VolumeSpec, *api.VolumeLocator, *api.Source, error) {
-	var source *api.Source
+	source := &api.Source{}
 	locator := &api.VolumeLocator{
 		VolumeLabels: make(map[string]string),
 	}
