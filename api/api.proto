@@ -466,3 +466,43 @@ message ActiveRequests {
   int64 RequestCount = 1;
   repeated ActiveRequest ActiveRequest = 2;
 }
+
+message CloudSnapInfo {
+	string SrcVolID = 1;
+	string SrcVolName = 2;
+	string Snap = 3;
+	google.protobuf.Timestamp Timestamp = 4;
+	string Status = 5;
+}
+
+message CloudSnapStatus {
+	string Activity = 1;
+	string State = 2;
+	uint64 BytesDone = 3;
+	google.protobuf.Timestamp StartTime = 4;
+	google.protobuf.Timestamp CompletedTime = 5;
+	string ErrorString = 6;
+	string CloudSnapID = 7;
+	string ReqState = 8;
+}
+
+message UploadInput {
+	string srcVolumeId = 1;
+	string srcVolumeName = 2;
+	string snapVolumeId = 3;
+	string snapPath = 4;
+	string parentPath = 5;
+	string clusterId = 6;
+	string srcVolumeInfo = 7;
+}
+
+message CloudSnapCreateResponse {
+  VolumeCreateResponse volume_create_response = 1;
+}
+
+message CloudsnapScheduleInfo {
+	string VolumeID = 1;
+	string Schedule = 2;
+	string CredID = 3;
+	uint64 MaxBackups =4;
+}

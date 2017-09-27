@@ -22,6 +22,7 @@ type volumeDriver struct {
 	volume.SnapshotDriver
 	volume.StoreEnumerator
 	volume.StatsDriver
+	volume.BackupDriver
 	name        string
 	baseDirPath string
 	provider    Provider
@@ -41,6 +42,7 @@ func newVolumeDriver(
 			kvdb.Instance(),
 		),
 		volume.StatsNotSupported,
+		volume.BackupNotSupported,
 		name,
 		baseDirPath,
 		provider,

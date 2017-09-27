@@ -62,6 +62,7 @@ const (
 const (
 	OsdVolumePath   = "osd-volumes"
 	OsdSnapshotPath = "osd-snapshot"
+	OsdCloudSnapshotPath = "osd-cloudsnapshot"
 	TimeLayout      = "Jan 2 15:04:05 UTC 2006"
 )
 

@@ -120,11 +120,28 @@ type StatsDriver interface {
 	GetActiveRequests() (*api.ActiveRequests, error)
 }
 
+// BackupDriver interfaces provides snapshot capability
+type BackupDriver interface {
+	GetCloudBkupCatalog(cloudVol string, credID string) ([]byte, error)
+	GetCloudBkupMetadata(cloudVol string, credID string) (map[string]string, error)
+	CloudBackup(volumeID string, snapID string, credID string, fullBkup bool, scheduled bool) error
+	CloudRestore(dstVol string, cloudVol string, credID string, nodeID string) (string, error)
+	ListCloudSnaps(srcVol string, clusterID string, credID string, all bool) ([]*api.CloudSnapInfo, error)
+	DeleteCloudSnaps(clusterID string, volstring, credID string) error
+	CloudBackupStatusFromCache(volumeID string, local bool) (map[string]*api.CloudSnapStatus, error)
+	ChangeStateForCloudBackup(volumeID string, reqState string) error
+	CreateCloudBackupSchedule(schedInfo api.CloudsnapScheduleInfo) (string, error)
+	UpdateCloudBackupSchedule(uuid string, schedInfo api.CloudsnapScheduleInfo) error
+	ListCloudBackupSchedules() (map[string]api.CloudsnapScheduleInfo, error)
+	DeleteCloudBackupSchedule(uuid string) error
+}
+
 // ProtoDriver must be implemented by all volume drivers.  It specifies the
 // most basic functionality, such as creating and deleting volumes.
 type ProtoDriver interface {
 	SnapshotDriver
 	StatsDriver
+	BackupDriver
 	// Name returns the name of the driver.
 	Name() string
 	// Type of this driver

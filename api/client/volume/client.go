@@ -11,12 +11,14 @@ import (
 	"github.com/libopenstorage/openstorage/api"
 	"github.com/libopenstorage/openstorage/api/client"
 	"github.com/libopenstorage/openstorage/volume"
+	"strings"
 )
 
 const (
 	graphPath  = "/graph"
 	volumePath = "/osd-volumes"
 	snapPath   = "/osd-snapshot"
+	cloudsnapPath = "/osd-cloudsnapshot"
 )
 
 type volumeClient struct {
@@ -402,4 +404,156 @@ func (v *volumeClient) doVolumeSetGetResponse(volumeID string,
 		return nil, errors.New(response.VolumeResponse.Error)
 	}
 	return response, nil
+}
+
+
+func (v *volumeClient) ListCloudSnaps(srcVol, clusterID, credID string, all bool) ([]*api.CloudSnapInfo, error) {
+	var snapList []*api.CloudSnapInfo
+	listall := strconv.FormatBool(all)
+
+	if err := v.c.Get().Resource(cloudsnapPath + "/listcloudsnaps?vol=" + srcVol +
+		"&credid=" + credID + "&cluster=" + clusterID + "&all=" + listall).Do().Unmarshal(snapList); err != nil {
+		return nil, err
+	}
+
+	return snapList, nil
+}
+
+func (v *volumeClient) CloudBackupStatusFromCache(volumeId string, local bool) (map[string]*api.CloudSnapStatus, error) {
+	statusList := make(map[string]*api.CloudSnapStatus, 0)
+
+	loc := strconv.FormatBool(local)
+	if err := v.c.Get().Resource(cloudsnapPath + "/cloudsnapstatus?vol=" + volumeId + "&local=" + loc).Do().Unmarshal(statusList); err != nil {
+		return nil, err
+	}
+
+	return statusList, nil
+}
+
+func (v *volumeClient) GetCloudBkupMetadata(cloudVol, credID string) (map[string]string, error) {
+	metadata := make(map[string]string, 0)
+
+	if err := v.c.Get().Resource(cloudsnapPath + "/getbkupmeta?vol=" + cloudVol + "&credid=" + credID).Do().Unmarshal(metadata); err != nil {
+		return nil, err
+	}
+
+	return metadata, nil
+}
+
+func (v *volumeClient) GetCloudBkupCatalog(volstring, credID string) ([]byte, error) {
+	catalog := make([]byte, 0)
+
+	if err := v.c.Get().Resource(cloudsnapPath + "/getbkupcatalog?vol=" + volstring + "&credid=" + credID).Do().Unmarshal(catalog); err != nil {
+		return nil, err
+	}
+
+	return catalog, nil
+}
+
+func (v *volumeClient) CloudBackup(volumeID, snapID, credID string, fullBkup bool, scheduled bool) (error) {
+	full := strconv.FormatBool(fullBkup)
+
+	body, err := v.c.Get().Resource(cloudsnapPath + "/backup?vol=" + volumeID + "&credid=" + credID + "&full=" + full).Do().Body();
+	if err != nil {
+		return err
+	}
+
+	response := bytes.NewBuffer(body)
+
+	contents, err := ioutil.ReadAll(response)
+	if err != nil {
+		return err
+	}
+
+	return errors.New(strings.TrimSpace(string(contents)))
+}
+
+func (v *volumeClient) CloudRestore(dstVol string, cloudVol string, credID string, nodeID string) (string, error) {
+	var restoreVolume string
+
+	if err := v.c.Get().Resource(cloudsnapPath + "/restore?vol=" + dstVol +
+	"&cldvol=" + cloudVol + "&credid=" + credID + "&nodeid=" + nodeID).Do().Unmarshal(restoreVolume); err != nil {
+		return "", err
+	}
+
+	return restoreVolume, nil
+}
+
+func (v *volumeClient) DeleteCloudSnaps(clusterID string, volumeID string, credID string) error {
+	body, err := v.c.Get().Resource(cloudsnapPath + "/deletecloudsnaps?volumeid=" + volumeID +
+		"&credid=" + credID + "&clusterid=" + clusterID).Do().Body();
+	if err != nil {
+		return err
+	}
+
+	response := bytes.NewBuffer(body)
+
+	contents, err := ioutil.ReadAll(response)
+	if err != nil {
+		return err
+	}
+
+
+
+	return errors.New(strings.TrimSpace(string(contents)))
+}
+
+func (v *volumeClient) ChangeStateForCloudBackup(bkupVolId, state string) error {
+	body, err := v.c.Get().Resource(cloudsnapPath + "/changestate?vol=" + bkupVolId +
+		"&state=" + state).Do().Body();
+	if err != nil {
+		return err
+	}
+
+	response := bytes.NewBuffer(body)
+
+	contents, err := ioutil.ReadAll(response)
+	if err != nil {
+		return err
+	}
+
+	return errors.New(strings.TrimSpace(string(contents)))
+}
+
+func (v *volumeClient) CreateCloudBackupSchedule(schedinfo api.CloudsnapScheduleInfo) (string, error) {
+	var scheduleID string
+
+	maxbackups := strconv.Itoa(int(schedinfo.MaxBackups))
+
+	if err := v.c.Get().Resource(cloudsnapPath + "/createcloudsnapsched?volumeid=" + schedinfo.VolumeID +
+		"&sched=" + schedinfo.Schedule + "&maxbackups=" + maxbackups + "&credid=" + schedinfo.CredID).Do().Unmarshal(scheduleID); err != nil {
+		return "", err
+	}
+
+	return scheduleID, nil
+}
+
+func (v *volumeClient) DeleteCloudBackupSchedule(uuid string) error {
+	body, err := v.c.Get().Resource(cloudsnapPath + "/deletecloudsnapsched?uuid=" + uuid).Do().Body();
+	if err != nil {
+		return err
+	}
+
+	response := bytes.NewBuffer(body)
+
+	contents, err := ioutil.ReadAll(response)
+	if err != nil {
+		return err
+	}
+
+	return errors.New(strings.TrimSpace(string(contents)))
+}
+
+func (v *volumeClient) ListCloudBackupSchedules() (map[string]api.CloudsnapScheduleInfo, error) {
+	var schedules map[string]api.CloudsnapScheduleInfo
+
+	if err := v.c.Get().Resource(cloudsnapPath + "/listcloudsnapsched").Do().Unmarshal(schedules); err != nil {
+		return nil, err
+	}
+
+	return schedules, nil
+}
+
+func (v *volumeClient) UpdateCloudBackupSchedule(uuid string, schedInfo api.CloudsnapScheduleInfo) error {
+	return errors.New("Operation not supported")
 }

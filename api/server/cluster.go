@@ -38,9 +38,15 @@ func (c *clusterApi) Routes() []*Route {
 		{verb: "PUT", path: clusterPath("/tunnelconfig", cluster.APIVersion), fn: c.setTunnelConfig},
 		{verb: "PUT", path: clusterPath("/fluentdconfig", cluster.APIVersion), fn: c.setFluentDConfig},
 		{verb: "DELETE", path: clusterPath("/fluentdconfig", cluster.APIVersion), fn: c.deleteFluentDConfig},
+		/* Alerts */
 		{verb: "GET", path: clusterPath("/alerts/{resource}", cluster.APIVersion), fn: c.enumerateAlerts},
 		{verb: "PUT", path: clusterPath("/alerts/{resource}/{id}", cluster.APIVersion), fn: c.clearAlert},
 		{verb: "DELETE", path: clusterPath("/alerts/{resource}/{id}", cluster.APIVersion), fn: c.eraseAlert},
+		/* Credentials For Cloud Operations */
+		{verb: "PUT", path: clusterPath("/addcreds", cluster.APIVersion), fn: c.clearAlert},
+		{verb: "DELETE", path: clusterPath("/deletecreds/{id}", cluster.APIVersion), fn: c.eraseAlert},
+		{verb: "GET", path: clusterPath("/getcreds/{id}", cluster.APIVersion), fn: c.clearAlert},
+		{verb: "GET", path: clusterPath("/listcreds", cluster.APIVersion), fn: c.eraseAlert},
 	}
 }
 func newClusterAPI() restServer {

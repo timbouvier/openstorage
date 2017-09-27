@@ -53,6 +53,7 @@ type Driver struct {
 	volume.StatsDriver
 	volume.StoreEnumerator
 	volume.IODriver
+	volume.BackupDriver
 	ops StorageOps
 	md  *Metadata
 }
@@ -91,6 +92,7 @@ func Init(params map[string]string) (volume.VolumeDriver, error) {
 			instance: instance,
 		},
 		IODriver:        volume.IONotSupported,
+		BackupDriver: volume.BackupNotSupported,
 		StoreEnumerator: common.NewDefaultStoreEnumerator(Name, kvdb.Instance()),
 	}
 	return d, nil

@@ -496,6 +496,342 @@ func (vd *volAPI) versions(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(versions)
 }
 
+func (vd *volAPI) cloudsnapBackupCatalog(w http.ResponseWriter, r *http.Request) {
+	method := "cloudsnapBackupCatalog"
+
+	vars := mux.Vars(r)
+	cloudVol := vars["vol"]
+	credID := vars["credid"]
+
+	d, err := vd.getVolDriver(r)
+	if err != nil {
+		notFound(w, r)
+		return
+	}
+
+	meta, err := d.GetCloudBkupCatalog(cloudVol, credID)
+	if err != nil {
+		e := fmt.Errorf("Failed to get backup catalog: %s", err.Error())
+		vd.sendError(vd.name, method, w, e.Error(), http.StatusBadRequest)
+		return
+	}
+
+	json.NewEncoder(w).Encode(meta)
+}
+
+func (vd *volAPI) cloudsnapBackupMeta(w http.ResponseWriter, r *http.Request) {
+	method := "cloudsnapBackupCatalog"
+
+	vars := mux.Vars(r)
+	cloudVol := vars["vol"]
+	credID := vars["credid"]
+
+	d, err := vd.getVolDriver(r)
+	if err != nil {
+		notFound(w, r)
+		return
+	}
+
+	meta, err := d.GetCloudBkupMetadata(cloudVol, credID)
+
+	if err != nil {
+		e := fmt.Errorf("Failed to get backup meta data: %s", err.Error())
+		vd.sendError(vd.name, method, w, e.Error(), http.StatusBadRequest)
+		return
+	}
+
+	json.NewEncoder(w).Encode(meta)
+}
+
+func (vd *volAPI) cloudsnapBackup(w http.ResponseWriter, r *http.Request) {
+	method := "cloudsnapBackup"
+
+	vars := mux.Vars(r)
+	srcVol := vars["vol"]
+	credID := vars["credid"]
+	full := vars["full"]
+
+	d, err := vd.getVolDriver(r)
+
+	if err != nil {
+		notFound(w, r)
+		return
+	}
+
+	fullBkup := false
+	if full == "true" {
+		fullBkup = true
+	}
+	err = d.CloudBackup(srcVol, "", credID, fullBkup, false)
+
+	if err != nil {
+		e := fmt.Errorf("Failed to take backup: %s", err.Error())
+		vd.sendError(vd.name, method, w, e.Error(), http.StatusBadRequest)
+		return
+	}
+
+	var response api.CloudSnapCreateResponse
+	response.VolumeCreateResponse = &api.VolumeCreateResponse{
+		Id: srcVol,
+		VolumeResponse: &api.VolumeResponse{
+			Error: responseStatus(err),
+		},
+	}
+	json.NewEncoder(w).Encode(&response)
+}
+
+func (vd *volAPI) cloudsnapRestore(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	dstVol := vars["vol"]
+	cloudVol := vars["cldvol"]
+	credID := vars["credid"]
+	nodeID := vars["nodeid"]
+
+	d, err := vd.getVolDriver(r)
+	if err != nil {
+		notFound(w, r)
+		return
+	}
+
+	response := &api.VolumeResponse{}
+
+	_, err = d.CloudRestore(dstVol, cloudVol, credID, nodeID)
+
+	if err != nil {
+		response.Error = responseStatus(err)
+	}
+
+	json.NewEncoder(w).Encode(&response)
+}
+
+func (vd *volAPI) cloudsnapEnumerate(w http.ResponseWriter, r *http.Request) {
+	method := "cloudsnapEnumerate"
+
+	vars := mux.Vars(r)
+	vol := vars["volumeid"]
+	clusterID := vars["clusterid"]
+	credID := vars["credid"]
+	all := vars["all"]
+
+	d, err := vd.getVolDriver(r)
+	if err != nil {
+		notFound(w, r)
+		return
+	}
+
+	listall, err := strconv.ParseBool(all)
+	if err != nil {
+		e := fmt.Errorf("Failed to take backup: %s", err.Error())
+		vd.sendError(vd.name, method, w, e.Error(), http.StatusBadRequest)
+		return
+	}
+
+	snaps, err := d.ListCloudSnaps(vol, clusterID, credID, listall)
+
+	if err != nil {
+		e := fmt.Errorf("Failed to take backup: %s", err.Error())
+		vd.sendError(vd.name, method, w, e.Error(), http.StatusBadRequest)
+		return
+	}
+
+	json.NewEncoder(w).Encode(&snaps)
+}
+
+func (vd *volAPI) cloudsnapDelete(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	vol := vars["volumeid"]
+	clusterID := vars["clusterid"]
+	credID := vars["credid"]
+
+	d, err := vd.getVolDriver(r)
+	if err != nil {
+		notFound(w, r)
+		return
+	}
+
+	response := &api.VolumeResponse{}
+
+	err = d.DeleteCloudSnaps(clusterID, vol, credID)
+	if err != nil {
+		response.Error = responseStatus(err)
+	}
+
+	json.NewEncoder(w).Encode(&response)
+}
+
+func (vd *volAPI) cloudsnapStatus(w http.ResponseWriter, r *http.Request) {
+	method := "cloudsnapStatus"
+	vars := mux.Vars(r)
+	srcVol := vars["vol"]
+	local := vars["local"]
+
+	d, err := vd.getVolDriver(r)
+	if err != nil {
+		notFound(w, r)
+		return
+	}
+
+	loc, err := strconv.ParseBool(local)
+
+	if err != nil {
+		e := fmt.Errorf("Failed to take backup: %s", err.Error())
+		vd.sendError(vd.name, method, w, e.Error(), http.StatusBadRequest)
+		return
+	}
+
+	status, err := d.CloudBackupStatusFromCache(srcVol, loc)
+	if err != nil {
+		e := fmt.Errorf("Failed to take backup: %s", err.Error())
+		vd.sendError(vd.name, method, w, e.Error(), http.StatusBadRequest)
+		return
+	}
+
+	json.NewEncoder(w).Encode(&status)
+}
+
+func (vd *volAPI) cloudsnapChangeState(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	bkupVol := vars["vol"]
+	state := vars["state"]
+
+	d, err := vd.getVolDriver(r)
+
+	if err != nil {
+		notFound(w, r)
+		return
+	}
+
+	response := &api.VolumeResponse{}
+
+	err = d.ChangeStateForCloudBackup(bkupVol, state)
+	if err != nil {
+		response.Error = responseStatus(err)
+	}
+
+	json.NewEncoder(w).Encode(&response)
+}
+
+func (vd *volAPI) cloudsnapCreateSched(w http.ResponseWriter, r *http.Request) {
+	method := "cloudsnapUpdateSched"
+
+	vars := mux.Vars(r)
+	vol := vars["volumeid"]
+	maxbackups := vars["maxbackups"]
+	credID := vars["credid"]
+	sched := vars["sched"]
+
+	d, err := vd.getVolDriver(r)
+	if err != nil {
+		notFound(w, r)
+		return
+	}
+
+	var maxBackups uint64
+	if maxbackups != "" {
+		maxBackups, err = strconv.ParseUint(maxbackups, 0, 64)
+		if err != nil {
+			e := fmt.Errorf("Failed to parse maxbackups: %s", err.Error())
+			vd.sendError(vd.name, method, w, e.Error(), http.StatusBadRequest)
+			return
+		}
+	}
+
+	newSched := api.CloudsnapScheduleInfo {
+		VolumeID:   vol,
+		Schedule:   sched,
+		CredID:     credID,
+		MaxBackups: maxBackups,
+	}
+
+	uuid, err := d.CreateCloudBackupSchedule(newSched)
+
+	if err != nil {
+		e := fmt.Errorf("Failed to created backup schedule: %s", err.Error())
+		vd.sendError(vd.name, method, w, e.Error(), http.StatusBadRequest)
+		return
+	}
+	json.NewEncoder(w).Encode(&uuid)
+}
+
+func (vd *volAPI) cloudsnapUpdateSched(w http.ResponseWriter, r *http.Request) {
+	method := "cloudsnapUpdateSched"
+
+	vars := mux.Vars(r)
+	uuid := vars["uuid"]
+	maxbackups := vars["maxbackups"]
+	credID := vars["credid"]
+	sched := vars["sched"]
+
+	d, err := vd.getVolDriver(r)
+
+	if err != nil {
+		notFound(w, r)
+		return
+	}
+
+	var maxBackups uint64
+	if maxbackups != "" {
+		maxBackups, err = strconv.ParseUint(maxbackups, 0, 64)
+		if err != nil {
+			e := fmt.Errorf("Failed to take parse maxbackups: %s", err.Error())
+			vd.sendError(vd.name, method, w, e.Error(), http.StatusBadRequest)
+			return
+		}
+	}
+
+	newSched := api.CloudsnapScheduleInfo {
+		Schedule:   sched,
+		CredID:     credID,
+		MaxBackups: maxBackups,
+	}
+
+	response := &api.VolumeResponse{}
+	err = d.UpdateCloudBackupSchedule(uuid, newSched)
+	if err != nil {
+		response.Error = responseStatus(err)
+	}
+
+	json.NewEncoder(w).Encode(&response)
+}
+
+func (vd *volAPI) cloudsnapEnumerateSched(w http.ResponseWriter, r *http.Request) {
+	method := "cloudsnapEnumerateSched"
+	d, err := vd.getVolDriver(r)
+	if err != nil {
+		notFound(w, r)
+		return
+	}
+
+	schedules, err := d.ListCloudBackupSchedules()
+
+	if err != nil {
+		e := fmt.Errorf("Failed to enumerate schedules: %s", err.Error())
+		vd.sendError(vd.name, method, w, e.Error(), http.StatusBadRequest)
+		return
+	}
+
+	json.NewEncoder(w).Encode(&schedules)
+}
+
+func (vd *volAPI) cloudsnapDeleteSched(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	uuid := vars["uuid"]
+
+	d, err := vd.getVolDriver(r)
+	if err != nil {
+		notFound(w, r)
+		return
+	}
+
+	response := &api.VolumeResponse{}
+	err = d.DeleteCloudBackupSchedule(uuid)
+	if err != nil {
+		response.Error = responseStatus(err)
+	}
+
+	json.NewEncoder(w).Encode(&response)
+}
+
 func volVersion(route, version string) string {
 	if version == "" {
 		return "/" + route
@@ -512,6 +848,10 @@ func snapPath(route, version string) string {
 	return volVersion(api.OsdSnapshotPath+route, version)
 }
 
+func cloudSnapPath(route, version string) string {
+	return volVersion(api.OsdCloudSnapshotPath+route, version)
+}
+
 func (vd *volAPI) Routes() []*Route {
 	return []*Route{
 		{verb: "GET", path: "/" + api.OsdVolumePath + "/versions", fn: vd.versions},
@@ -526,8 +866,22 @@ func (vd *volAPI) Routes() []*Route {
 		{verb: "GET", path: volPath("/usedsize/{id}", volume.APIVersion), fn: vd.usedsize},
 		{verb: "GET", path: volPath("/requests", volume.APIVersion), fn: vd.requests},
 		{verb: "GET", path: volPath("/requests/{id}", volume.APIVersion), fn: vd.requests},
+		/* Snapshots */
 		{verb: "POST", path: snapPath("", volume.APIVersion), fn: vd.snap},
 		{verb: "GET", path: snapPath("", volume.APIVersion), fn: vd.snapEnumerate},
 		{verb: "POST", path: snapPath("/restore/{id}", volume.APIVersion), fn: vd.restore},
+		/* Cloud Snapshots */
+		{verb: "GET", path: cloudSnapPath("/getbkupcatalog", volume.APIVersion), fn: vd.cloudsnapBackupCatalog},
+		{verb: "GET", path: cloudSnapPath("/getbkupmeta", volume.APIVersion), fn: vd.cloudsnapBackupMeta},
+		{verb: "POST", path: cloudSnapPath("/backup", volume.APIVersion), fn: vd.cloudsnapBackup},
+		{verb: "POST", path: cloudSnapPath("/restore", volume.APIVersion), fn: vd.cloudsnapRestore},
+		{verb: "GET", path: cloudSnapPath("/listcloudsnaps", volume.APIVersion), fn: vd.cloudsnapEnumerate},
+		{verb: "DELETE", path: cloudSnapPath("/deletecloudsnaps", volume.APIVersion), fn: vd.cloudsnapDelete},
+		{verb: "GET", path: cloudSnapPath("/cloudsnapstatus", volume.APIVersion), fn: vd.cloudsnapStatus},
+		{verb: "POST", path: cloudSnapPath("/changestate", volume.APIVersion), fn: vd.cloudsnapChangeState},
+		{verb: "PUT", path: cloudSnapPath("/createcloudsnapsched", volume.APIVersion), fn: vd.cloudsnapCreateSched},
+		{verb: "POST", path: cloudSnapPath("/updatecloudsnapsched", volume.APIVersion), fn: vd.cloudsnapUpdateSched},
+		{verb: "GET", path: cloudSnapPath("/listcloudsnapsched", volume.APIVersion), fn: vd.cloudsnapEnumerateSched},
+		{verb: "DELETE", path: cloudSnapPath("/deletecloudsnapsched", volume.APIVersion), fn: vd.cloudsnapDeleteSched},
 	}
 }
