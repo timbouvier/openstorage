@@ -16,6 +16,7 @@ import (
 	"github.com/libopenstorage/openstorage/api/flexvolume"
 	osdcli "github.com/libopenstorage/openstorage/cli"
 	"github.com/libopenstorage/openstorage/cluster"
+	"github.com/libopenstorage/openstorage/creds"
 	"github.com/libopenstorage/openstorage/config"
 	"github.com/libopenstorage/openstorage/graph/drivers"
 	"github.com/libopenstorage/openstorage/volume"
@@ -235,6 +236,11 @@ func start(c *cli.Context) error {
 		if err := cm.Start(0, false); err != nil {
 			return fmt.Errorf("Unable to start cluster manager: %v", err)
 		}
+	}
+
+	err = creds.Init()
+	if err != nil {
+		return fmt.Errorf("Unable to find credentials instance: %v", err)
 	}
 
 	// Daemon does not exit.

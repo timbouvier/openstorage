@@ -506,3 +506,7 @@ message CloudsnapScheduleInfo {
 	string CredID = 3;
 	uint64 MaxBackups =4;
 }
+
+message CredentialResponse {
+  string error = 1;
+}

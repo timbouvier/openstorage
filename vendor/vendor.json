@@ -1011,6 +1011,12 @@
 			"revisionTime": "2016-07-01T21:55:24Z"
 		},
 		{
+			"checksumSHA1": "dFtfBPLrhNJX0XrH6+7UNr+iZSs=",
+			"path": "github.com/libopenstorage/secrets",
+			"revision": "d7bb260153f47e65f99a0025e0177e2a85264134",
+			"revisionTime": "2017-07-28T22:21:09Z"
+		},
+		{
 			"checksumSHA1": "D8tjRlFJ9xhAs9nchGptBtZgCIY=",
 			"path": "github.com/libopenstorage/systemutils",
 			"revision": "44ac83be3ce1b19b1df34efdd763f22b2b554891",
